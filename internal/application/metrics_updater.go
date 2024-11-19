@@ -1,12 +1,13 @@
 package application
 
 import (
-	"github.com/abakunov/log-analyzer/internal/domain"
 	"sort"
+
+	"github.com/abakunov/log-analyzer/internal/domain"
 )
 
 // updateMetrics updates the metrics based on the log record.
-func (a *LogAnalyzer) updateMetrics(logRecord domain.LogRecord) {
+func (a *LogAnalyzer) updateMetrics(logRecord *domain.LogRecord) {
 	metrics := a.Metrics
 
 	metrics.TotalRequests++
@@ -15,6 +16,7 @@ func (a *LogAnalyzer) updateMetrics(logRecord domain.LogRecord) {
 	if metrics.StartDate.IsZero() || metrics.StartDate.After(logRecord.Timestamp) {
 		metrics.StartDate = logRecord.Timestamp
 	}
+
 	if metrics.EndDate.IsZero() || metrics.EndDate.Before(logRecord.Timestamp) {
 		metrics.EndDate = logRecord.Timestamp
 	}
@@ -35,10 +37,14 @@ func (a *LogAnalyzer) CalculatePercentile(values []int, percentile float64) int 
 	if len(values) == 0 {
 		return 0
 	}
+
 	sort.Ints(values)
+
 	index := int(float64(len(values)) * percentile / 100)
+
 	if index >= len(values) {
 		index = len(values) - 1
 	}
+
 	return values[index]
 }

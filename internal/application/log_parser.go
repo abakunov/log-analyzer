@@ -11,6 +11,7 @@ import (
 
 func ParseLogLine(line string) (domain.LogRecord, error) {
 	var log domain.LogRecord
+
 	pattern := `^(\S+) - - \[([^\]]+)\] "(\S+) (\S+) (\S+)" (\d+) (\d+|-) "([^"]*)" "([^"]*)"$`
 	re := regexp.MustCompile(pattern)
 	matches := re.FindStringSubmatch(line)
@@ -47,6 +48,7 @@ func ParseLogLine(line string) (domain.LogRecord, error) {
 		if err != nil {
 			return log, fmt.Errorf("failed to parse response size: %v", err)
 		}
+
 		log.ResponseSize = responseSize
 	} else {
 		log.ResponseSize = 0

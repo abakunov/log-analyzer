@@ -22,6 +22,7 @@ func (ro *ReportOutput) OutputToFile(report, filename string) error {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
+			fmt.Printf("failed to close file: %v\n", err)
 		}
 	}(file)
 

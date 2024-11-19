@@ -7,10 +7,7 @@ import (
 )
 
 // ParseTimeBounds parses the 'from' and 'to' time bounds from strings into time.Time format.
-func ParseTimeBounds(fromStr, toStr string) (time.Time, time.Time, error) {
-	var fromTime, toTime time.Time
-	var err error
-
+func ParseTimeBounds(fromStr, toStr string) (fromTime, toTime time.Time, err error) {
 	// List of supported time formats.
 	formats := []string{
 		time.RFC3339, // Full ISO8601 format with time (e.g., "2015-05-18T00:00:00Z").
@@ -21,7 +18,8 @@ func ParseTimeBounds(fromStr, toStr string) (time.Time, time.Time, error) {
 	if fromStr != "" {
 		fromTime, err = parseTimeWithFormats(fromStr, formats)
 		if err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("invalid from time: %w", err)
+			err = fmt.Errorf("invalid from time: %w", err)
+			return
 		}
 	}
 
@@ -29,11 +27,12 @@ func ParseTimeBounds(fromStr, toStr string) (time.Time, time.Time, error) {
 	if toStr != "" {
 		toTime, err = parseTimeWithFormats(toStr, formats)
 		if err != nil {
-			return time.Time{}, time.Time{}, fmt.Errorf("invalid to time: %w", err)
+			err = fmt.Errorf("invalid to time: %w", err)
+			return
 		}
 	}
 
-	return fromTime, toTime, nil
+	return
 }
 
 // parseTimeWithFormats tries to parse a time string with multiple formats.
@@ -44,6 +43,7 @@ func parseTimeWithFormats(input string, formats []string) (time.Time, error) {
 			return parsedTime, nil
 		}
 	}
+
 	return time.Time{}, fmt.Errorf("could not parse time: %s", input)
 }
 

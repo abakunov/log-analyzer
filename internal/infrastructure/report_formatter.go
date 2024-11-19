@@ -2,11 +2,12 @@ package infrastructure
 
 import (
 	"fmt"
-	"github.com/abakunov/log-analyzer/internal/domain"
 	"math"
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/abakunov/log-analyzer/internal/domain"
 )
 
 // ReportFormatter is responsible for generating text reports.
@@ -83,18 +84,22 @@ func (rf *ReportFormatter) Render(format string) string {
 
 	// Add resources section.
 	sortedResources := sortMapByValue(rf.Metrics.Resources)
+
 	resourcesTable := [][]string{{"Resource", "Count"}}
 	for _, res := range sortedResources {
 		resourcesTable = append(resourcesTable, []string{res.Key, fmt.Sprintf("%d", res.Value)})
 	}
+
 	addTable(&sb, format, "Requested Resources", resourcesTable)
 
 	// Add status codes section.
 	sortedStatusCodes := sortIntMapByValue(rf.Metrics.StatusCodes)
+
 	statusTable := [][]string{{"Code", "Count"}}
 	for _, code := range sortedStatusCodes {
 		statusTable = append(statusTable, []string{fmt.Sprintf("%d", code.Key), fmt.Sprintf("%d", code.Value)})
 	}
+
 	addTable(&sb, format, "Response Codes", statusTable)
 
 	return sb.String()
@@ -104,11 +109,11 @@ func (rf *ReportFormatter) Render(format string) string {
 func addHeader(sb *strings.Builder, format, header string) {
 	switch format {
 	case "markdown":
-		sb.WriteString(fmt.Sprintf("#### %s\n\n", header))
+		fmt.Fprintf(sb, "#### %s\n\n", header)
 	case "adoc":
-		sb.WriteString(fmt.Sprintf("= %s\n\n", header))
+		fmt.Fprintf(sb, "= %s\n\n", header)
 	default: // plain text
-		sb.WriteString(fmt.Sprintf("=== %s ===\n\n", header))
+		fmt.Fprintf(sb, "=== %s ===\n\n", header)
 	}
 }
 
@@ -116,28 +121,33 @@ func addHeader(sb *strings.Builder, format, header string) {
 func addTable(sb *strings.Builder, format, title string, rows [][]string) {
 	switch format {
 	case "markdown":
-		sb.WriteString(fmt.Sprintf("#### %s\n\n", title))
+		fmt.Fprintf(sb, "#### %s\n\n", title)
+
 		for i, row := range rows {
 			if i == 0 {
-				sb.WriteString("| " + strings.Join(row, " | ") + " |\n")
-				sb.WriteString("|" + strings.Repeat(":---|", len(row)) + "\n")
+				fmt.Fprintf(sb, "| %s |\n", strings.Join(row, " | "))
+				fmt.Fprintf(sb, "|%s|\n", strings.Repeat(":---|", len(row)))
 			} else {
-				sb.WriteString("| " + strings.Join(row, " | ") + " |\n")
+				fmt.Fprintf(sb, "| %s |\n", strings.Join(row, " | "))
 			}
 		}
-		sb.WriteString("\n")
+
 	case "adoc":
-		sb.WriteString(fmt.Sprintf("== %s\n\n", title))
-		sb.WriteString("[cols=\"2,1\", options=\"header\"]\n|===\n")
+		fmt.Fprintf(sb, "== %s\n\n", title)
+		fmt.Fprintf(sb, "[cols=\"2,1\", options=\"header\"]\n|===\n")
+
 		for _, row := range rows {
-			sb.WriteString("| " + strings.Join(row, " | ") + "\n")
+			fmt.Fprintf(sb, "| %s\n", strings.Join(row, " | "))
 		}
-		sb.WriteString("|===\n\n")
+
+		fmt.Fprint(sb, "|===\n")
 	default: // plain text
-		sb.WriteString(fmt.Sprintf("%s:\n", title))
+		fmt.Fprintf(sb, "%s:\n", title)
+
 		for _, row := range rows {
-			sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", row[0], row[1]))
+			fmt.Fprintf(sb, " %-25s %-15s\n", row[0], row[1])
 		}
-		sb.WriteString("\n")
 	}
+
+	fmt.Fprintln(sb)
 }
