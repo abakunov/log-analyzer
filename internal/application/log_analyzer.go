@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"sort"
+	"strconv"
+	"strings"
 	"time"
 )
 
@@ -26,11 +28,11 @@ func NewLogAnalyzer(paths []string) *LogAnalyzer {
 }
 
 // AnalyzeLogs processes all log files or URLs based on the provided paths
-func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time) error {
+func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time, filterField, filterValue string) error {
 	for _, path := range a.Paths {
 		if isURL(path) {
 			fmt.Printf("Processing URL: %s\n", path)
-			err := a.processURL(path, from, to)
+			err := a.processURL(path, from, to, filterField, filterValue)
 			if err != nil {
 				fmt.Printf("Error processing URL %s: %v\n", path, err)
 			}
@@ -43,7 +45,7 @@ func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time) error {
 				// Проверяем, что это файл (а не директория)
 				if !info.IsDir() {
 					fmt.Printf("Processing file: %s\n", filePath)
-					err := a.processFile(filePath, from, to)
+					err := a.processFile(filePath, from, to, filterField, filterValue)
 					if err != nil {
 						fmt.Printf("Error processing file %s: %v\n", filePath, err)
 					}
@@ -62,18 +64,18 @@ func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time) error {
 }
 
 // processFile processes a single file
-func (a *LogAnalyzer) processFile(filePath string, from, to time.Time) error {
+func (a *LogAnalyzer) processFile(filePath string, from, to time.Time, filterField, filterValue string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)
 	}
 	defer file.Close()
 
-	return a.processLogs(file, from, to)
+	return a.processLogs(file, from, to, filterField, filterValue)
 }
 
 // processURL processes logs directly from a URL without loading into memory
-func (a *LogAnalyzer) processURL(url string, from, to time.Time) error {
+func (a *LogAnalyzer) processURL(url string, from, to time.Time, filterField, filterValue string) error {
 	resp, err := http.Get(url)
 	if err != nil {
 		return fmt.Errorf("failed to fetch file from URL %s: %w", url, err)
@@ -85,11 +87,11 @@ func (a *LogAnalyzer) processURL(url string, from, to time.Time) error {
 	}
 
 	// Process the logs directly from the response body
-	return a.processLogs(resp.Body, from, to)
+	return a.processLogs(resp.Body, from, to, filterField, filterValue)
 }
 
 // processLogs processes logs from an io.Reader line by line
-func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time) error {
+func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time, filterField, filterValue string) error {
 	scanner := bufio.NewScanner(reader)
 	lineCount := 0
 
@@ -110,11 +112,86 @@ func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time) error {
 			continue
 		}
 
+		// Apply filter based on field and value
+		if filterField != "" && filterValue != "" {
+			if !matchesFilter(logRecord, filterField, filterValue) {
+				continue
+			}
+		}
+
 		a.updateMetrics(logRecord)
 	}
 
 	fmt.Printf("Processed %d lines from log source\n", lineCount)
 	return scanner.Err()
+}
+
+var unknownFieldWarned = false // глобальная переменная для отслеживания предупреждения
+
+func matchesFilter(logRecord domain.LogRecord, field, value string) bool {
+	// Убираем символ `*` из конца значения, если он есть
+	isWildcard := strings.HasSuffix(value, "*")
+	if isWildcard {
+		value = strings.TrimSuffix(value, "*")
+	}
+
+	switch field {
+	case "ip":
+		if isWildcard {
+			return strings.HasPrefix(logRecord.IP, value)
+		}
+		return logRecord.IP == value
+	case "timestamp":
+		filterTime, err := time.Parse(time.RFC3339, value)
+		if err != nil {
+			fmt.Printf("Invalid timestamp filter value: %v\n", err)
+			return false
+		}
+		return logRecord.Timestamp.Equal(filterTime)
+	case "method":
+		if isWildcard {
+			return strings.HasPrefix(strings.ToLower(logRecord.Method), strings.ToLower(value))
+		}
+		return strings.EqualFold(logRecord.Method, value)
+	case "url":
+		if isWildcard {
+			return strings.HasPrefix(logRecord.URL, value)
+		}
+		return logRecord.URL == value
+	case "protocol":
+		if isWildcard {
+			return strings.HasPrefix(strings.ToLower(logRecord.Protocol), strings.ToLower(value))
+		}
+		return strings.EqualFold(logRecord.Protocol, value)
+	case "status":
+		if isWildcard {
+			return strings.HasPrefix(fmt.Sprintf("%d", logRecord.StatusCode), value)
+		}
+		return fmt.Sprintf("%d", logRecord.StatusCode) == value
+	case "response_size":
+		size, err := strconv.Atoi(value)
+		if err != nil {
+			fmt.Printf("Invalid response_size filter value: %v\n", err)
+			return false
+		}
+		return logRecord.ResponseSize == size
+	case "referer":
+		if isWildcard {
+			return strings.HasPrefix(logRecord.Referer, value)
+		}
+		return logRecord.Referer == value
+	case "agent":
+		if isWildcard {
+			return strings.HasPrefix(logRecord.UserAgent, value)
+		}
+		return logRecord.UserAgent == value
+	default:
+		if !unknownFieldWarned {
+			fmt.Printf("Unknown filter field: %s\n", field)
+			unknownFieldWarned = true // предупреждение выведено
+		}
+		return false
+	}
 }
 
 // updateMetrics updates the metrics based on the log record

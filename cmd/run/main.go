@@ -17,6 +17,8 @@ var (
 	from        string
 	to          string
 	format      string
+	filterField string
+	filterValue string
 )
 
 func parseTimeBounds(fromStr, toStr string) (time.Time, time.Time, error) {
@@ -96,7 +98,7 @@ func runAnalyzer() {
 	}
 
 	analyzer := application.NewLogAnalyzer(paths)
-	err = analyzer.AnalyzeLogs(fromTime, toTime)
+	err = analyzer.AnalyzeLogs(fromTime, toTime, filterField, filterValue)
 	if err != nil {
 		log.Fatalf("Error analyzing logs: %v", err)
 	}
@@ -144,6 +146,9 @@ func init() {
 	rootCmd.Flags().StringVar(&from, "from", "", "Start date in ISO8601 format (optional)")
 	rootCmd.Flags().StringVar(&to, "to", "", "End date in ISO8601 format (optional)")
 	rootCmd.Flags().StringVar(&format, "format", "", "Output format: markdown or adoc (optional)")
+	rootCmd.Flags().StringVar(&filterField, "filter-field", "", "Field to filter logs by (optional)")
+	rootCmd.Flags().StringVar(&filterValue, "filter-value", "", "Value to filter logs by (supports glob patterns, optional)")
+
 	err := rootCmd.MarkFlagRequired("path")
 	if err != nil {
 		return
