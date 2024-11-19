@@ -16,15 +16,15 @@ func ParseLogLine(line string) (domain.LogRecord, error) {
 	matches := re.FindStringSubmatch(line)
 
 	if len(matches) != 10 {
-		return log, fmt.Errorf("не удалось распарсить строку: %s", line)
+		return log, fmt.Errorf("failed to parse line: %s", line)
 	}
 
 	log.IP = matches[1]
 
-	// Parse timestamp
+	// Parse timestamp.
 	timestamp, err := time.Parse("02/Jan/2006:15:04:05 -0700", matches[2])
 	if err != nil {
-		return log, fmt.Errorf("не удалось распарсить время: %v", err)
+		return log, fmt.Errorf("failed to parse time: %v", err)
 	}
 
 	log.Timestamp = timestamp
@@ -33,19 +33,19 @@ func ParseLogLine(line string) (domain.LogRecord, error) {
 	log.URL = matches[4]
 	log.Protocol = matches[5]
 
-	// Status code
+	// Status code.
 	statusCode, err := strconv.Atoi(matches[6])
 	if err != nil {
-		return log, fmt.Errorf("не удалось распарсить код статуса: %v", err)
+		return log, fmt.Errorf("failed to parse status code: %v", err)
 	}
 
 	log.StatusCode = statusCode
 
-	// Size of response
+	// Size of response.
 	if matches[7] != "-" {
 		responseSize, err := strconv.Atoi(matches[7])
 		if err != nil {
-			return log, fmt.Errorf("не удалось распарсить размер ответа: %v", err)
+			return log, fmt.Errorf("failed to parse response size: %v", err)
 		}
 		log.ResponseSize = responseSize
 	} else {

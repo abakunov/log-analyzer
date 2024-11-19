@@ -14,7 +14,7 @@ type LogRecord struct {
 	UserAgent    string
 }
 
-// Metrics stores statistics from analyzed logs
+// Metrics stores statistics from analyzed logs.
 type Metrics struct {
 	FileNames       []string
 	StartDate       time.Time
@@ -30,7 +30,7 @@ type Metrics struct {
 	RPS             float64             // Requests Per Second
 }
 
-// NewMetrics initializes a new Metrics instance
+// NewMetrics initializes a new Metrics instance.
 func NewMetrics(fileNames []string) *Metrics {
 	return &Metrics{
 		FileNames:     fileNames,

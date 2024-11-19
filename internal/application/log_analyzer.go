@@ -19,7 +19,7 @@ type LogAnalyzer struct {
 	Metrics *domain.Metrics
 }
 
-// NewLogAnalyzer creates a new LogAnalyzer
+// NewLogAnalyzer creates a new LogAnalyzer.
 func NewLogAnalyzer(paths []string) *LogAnalyzer {
 	return &LogAnalyzer{
 		Paths:   paths,
@@ -27,7 +27,7 @@ func NewLogAnalyzer(paths []string) *LogAnalyzer {
 	}
 }
 
-// AnalyzeLogs processes all log files or URLs based on the provided paths
+// AnalyzeLogs processes all log files or URLs based on the provided paths.
 func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time, filterField, filterValue string) error {
 	for _, path := range a.Paths {
 		if isURL(path) {
@@ -42,7 +42,7 @@ func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time, filterField, filterValue s
 					return err
 				}
 
-				// Проверяем, что это файл (а не директория)
+				// Check if it is a file (and not a directory).
 				if !info.IsDir() {
 					fmt.Printf("Processing file: %s\n", filePath)
 					err := a.processFile(filePath, from, to, filterField, filterValue)
@@ -63,7 +63,7 @@ func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time, filterField, filterValue s
 	return nil
 }
 
-// processFile processes a single file
+// processFile processes a single file.
 func (a *LogAnalyzer) processFile(filePath string, from, to time.Time, filterField, filterValue string) error {
 	file, err := os.Open(filePath)
 	if err != nil {
@@ -74,7 +74,7 @@ func (a *LogAnalyzer) processFile(filePath string, from, to time.Time, filterFie
 	return a.processLogs(file, from, to, filterField, filterValue)
 }
 
-// processURL processes logs directly from a URL without loading into memory
+// processURL processes logs directly from a URL without loading into memory.
 func (a *LogAnalyzer) processURL(url string, from, to time.Time, filterField, filterValue string) error {
 	resp, err := http.Get(url)
 	if err != nil {
@@ -86,11 +86,11 @@ func (a *LogAnalyzer) processURL(url string, from, to time.Time, filterField, fi
 		return fmt.Errorf("unexpected HTTP status for URL %s: %s", url, resp.Status)
 	}
 
-	// Process the logs directly from the response body
+	// Process the logs directly from the response body.
 	return a.processLogs(resp.Body, from, to, filterField, filterValue)
 }
 
-// processLogs processes logs from an io.Reader line by line
+// processLogs processes logs from an io.Reader line by line.
 func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time, filterField, filterValue string) error {
 	scanner := bufio.NewScanner(reader)
 	lineCount := 0
@@ -104,7 +104,7 @@ func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time, filterFi
 			continue
 		}
 
-		// Skip filtering by time range if 'from' and 'to' are zero values
+		// Skip filtering by time range if 'from' and 'to' are zero values.
 		if !from.IsZero() && logRecord.Timestamp.Before(from) {
 			continue
 		}
@@ -112,7 +112,7 @@ func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time, filterFi
 			continue
 		}
 
-		// Apply filter based on field and value
+		// Apply filter based on field and value.
 		if filterField != "" && filterValue != "" {
 			if !matchesFilter(logRecord, filterField, filterValue) {
 				continue
@@ -126,10 +126,11 @@ func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time, filterFi
 	return scanner.Err()
 }
 
-var unknownFieldWarned = false // глобальная переменная для отслеживания предупреждения
+var unknownFieldWarned = false // Global variable to track if the warning has been shown.
 
+// matchesFilter checks if a log record matches the filter criteria.
 func matchesFilter(logRecord domain.LogRecord, field, value string) bool {
-	// Убираем символ `*` из конца значения, если он есть
+	// Remove the `*` character from the end of the value if it exists.
 	isWildcard := strings.HasSuffix(value, "*")
 	if isWildcard {
 		value = strings.TrimSuffix(value, "*")
@@ -188,19 +189,19 @@ func matchesFilter(logRecord domain.LogRecord, field, value string) bool {
 	default:
 		if !unknownFieldWarned {
 			fmt.Printf("Unknown filter field: %s\n", field)
-			unknownFieldWarned = true // предупреждение выведено
+			unknownFieldWarned = true // Warning has been shown.
 		}
 		return false
 	}
 }
 
-// updateMetrics updates the metrics based on the log record
+// updateMetrics updates the metrics based on the log record.
 func (a *LogAnalyzer) updateMetrics(logRecord domain.LogRecord) {
 	metrics := a.Metrics
 
 	metrics.TotalRequests++
 
-	// Update StartDate and EndDate
+	// Update StartDate and EndDate.
 	if metrics.StartDate.IsZero() || metrics.StartDate.After(logRecord.Timestamp) {
 		metrics.StartDate = logRecord.Timestamp
 	}
@@ -220,11 +221,11 @@ func (a *LogAnalyzer) updateMetrics(logRecord domain.LogRecord) {
 
 	metrics.StatusCodes[logRecord.StatusCode] += 1
 
-	// Add unique IP
+	// Add unique IP.
 	metrics.UniqueIPs[logRecord.IP] = struct{}{}
 }
 
-// calculateRPS calculates Requests Per Second (RPS)
+// calculateRPS calculates Requests Per Second (RPS).
 func (a *LogAnalyzer) calculateRPS() {
 	metrics := a.Metrics
 	duration := metrics.EndDate.Sub(metrics.StartDate).Seconds()
@@ -233,7 +234,7 @@ func (a *LogAnalyzer) calculateRPS() {
 	}
 }
 
-// CalculatePercentile counts the value of the specified percentile
+// CalculatePercentile calculates the value of the specified percentile.
 func (a *LogAnalyzer) CalculatePercentile(values []int, percentile float64) int {
 	if len(values) == 0 {
 		return 0
@@ -246,7 +247,7 @@ func (a *LogAnalyzer) CalculatePercentile(values []int, percentile float64) int 
 	return values[index]
 }
 
-// isURL checks if a given path is a URL
+// isURL checks if a given path is a URL.
 func isURL(path string) bool {
 	return len(path) > 4 && (path[:4] == "http" || path[:5] == "https")
 }

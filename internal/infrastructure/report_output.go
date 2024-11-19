@@ -5,15 +5,15 @@ import (
 	"os"
 )
 
-// ReportOutput handles outputting text reports to the console or a file
+// ReportOutput handles outputting text reports to the console or a file.
 type ReportOutput struct{}
 
-// OutputToConsole prints the report text to the console
+// OutputToConsole prints the report text to the console.
 func (ro *ReportOutput) OutputToConsole(report string) {
 	fmt.Println(report)
 }
 
-// OutputToFile writes the report text to a file
+// OutputToFile writes the report text to a file.
 func (ro *ReportOutput) OutputToFile(report, filename string) error {
 	file, err := os.Create(filename)
 	if err != nil {
@@ -22,7 +22,6 @@ func (ro *ReportOutput) OutputToFile(report, filename string) error {
 	defer func(file *os.File) {
 		err := file.Close()
 		if err != nil {
-
 		}
 	}(file)
 
