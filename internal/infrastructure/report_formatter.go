@@ -62,137 +62,82 @@ func sortIntMapByValue(data map[int]int) []struct {
 	return pairs
 }
 
-// RenderMarkdown generates a markdown representation of the report.
-func (rf *ReportFormatter) RenderMarkdown() string {
+// Render generates the report in the specified format.
+func (rf *ReportFormatter) Render(format string) string {
 	var sb strings.Builder
 
-	// Report creation timestamp.
-	sb.WriteString(fmt.Sprintf("#### Report created: %s\n\n", time.Now().Format("02.01.2006 15:04:05")))
+	// Add report creation timestamp.
+	addHeader(&sb, format, fmt.Sprintf("Report created: %s", time.Now().Format("02.01.2006 15:04:05")))
 
-	// General information.
-	sb.WriteString("#### General Information\n\n")
-	sb.WriteString("| Metric             | Value          |\n")
-	sb.WriteString("|:-------------------|:----------------|\n")                                     // Left-aligned table.
-	sb.WriteString(fmt.Sprintf("| File(s)           | `%s`           |\n", rf.Metrics.FileNames[0])) // First file.
-	for _, file := range rf.Metrics.FileNames[1:] {
-		sb.WriteString(fmt.Sprintf("|                   | `%s`           |\n", file)) // Remaining files.
-	}
-	sb.WriteString(fmt.Sprintf("| Start Date        | %s             |\n", rf.Metrics.StartDate.Format("02.01.2006")))
-	sb.WriteString(fmt.Sprintf("| End Date          | %s             |\n", rf.Metrics.EndDate.Format("02.01.2006")))
-	sb.WriteString(fmt.Sprintf("| Total Requests    | %d             |\n", rf.Metrics.TotalRequests))
-	sb.WriteString(fmt.Sprintf("| Unique IPs Count  | %d             |\n", len(rf.Metrics.UniqueIPs)))
-	sb.WriteString(fmt.Sprintf("| RPS (Requests/sec)| %.2f           |\n", rf.Metrics.RPS))
-	sb.WriteString(fmt.Sprintf("| Average Resp. Size| %db            |\n", int(math.Round(rf.Metrics.AverageRespSize))))
-	sb.WriteString(fmt.Sprintf("| 95th Percentile   | %db            |\n", rf.Metrics.Percentile95))
+	// Add general information section.
+	addTable(&sb, format, "General Information", [][]string{
+		{"Files", strings.Join(rf.Metrics.FileNames, ", ")},
+		{"Start Date", rf.Metrics.StartDate.Format("02.01.2006")},
+		{"End Date", rf.Metrics.EndDate.Format("02.01.2006")},
+		{"Total Requests", fmt.Sprintf("%d", rf.Metrics.TotalRequests)},
+		{"Unique IPs Count", fmt.Sprintf("%d", len(rf.Metrics.UniqueIPs))},
+		{"RPS (Requests/sec)", fmt.Sprintf("%.2f", rf.Metrics.RPS)},
+		{"Average Response Size", fmt.Sprintf("%db", int(math.Round(rf.Metrics.AverageRespSize)))},
+		{"95th Percentile Size", fmt.Sprintf("%db", rf.Metrics.Percentile95)},
+	})
 
-	// Resources section.
-	sb.WriteString("\n#### Requested Resources\n\n")
-	sb.WriteString("| Resource          | Count          |\n")
-	sb.WriteString("|:------------------|---------------:|\n")
+	// Add resources section.
 	sortedResources := sortMapByValue(rf.Metrics.Resources)
-	for _, pair := range sortedResources {
-		sb.WriteString(fmt.Sprintf("| `%s`             | %d             |\n", pair.Key, pair.Value))
-	}
-
-	// Status codes section.
-	sb.WriteString("\n#### Response Codes\n\n")
-	sb.WriteString("| Code              | Count          |\n")
-	sb.WriteString("|:------------------|---------------:|\n")
-	sortedStatusCodes := sortIntMapByValue(rf.Metrics.StatusCodes)
-	for _, pair := range sortedStatusCodes {
-		sb.WriteString(fmt.Sprintf("| %d               | %d             |\n", pair.Key, pair.Value))
-	}
-
-	return sb.String()
-}
-
-// RenderAdoc generates an AsciiDoc representation of the report.
-func (rf *ReportFormatter) RenderAdoc() string {
-	var sb strings.Builder
-
-	// Report creation timestamp.
-	sb.WriteString(fmt.Sprintf("= Report created: %s\n\n", time.Now().Format("02.01.2006 15:04:05")))
-
-	// General information.
-	sb.WriteString("== General Information\n\n")
-	sb.WriteString("[cols=\"2,1\", options=\"header\"]\n|===\n")
-	sb.WriteString("| Metric | Value\n")
-	sb.WriteString(fmt.Sprintf("| File(s) | `%s`\n", rf.Metrics.FileNames[0])) // First file.
-	for _, file := range rf.Metrics.FileNames[1:] {
-		sb.WriteString(fmt.Sprintf("|         | `%s`\n", file)) // Remaining files.
-	}
-	sb.WriteString(fmt.Sprintf("| Start Date | %s\n", rf.Metrics.StartDate.Format("02.01.2006")))
-	sb.WriteString(fmt.Sprintf("| End Date   | %s\n", rf.Metrics.EndDate.Format("02.01.2006")))
-	sb.WriteString(fmt.Sprintf("| Total Requests | %d\n", rf.Metrics.TotalRequests))
-	sb.WriteString(fmt.Sprintf("| Unique IPs Count | %d\n", len(rf.Metrics.UniqueIPs)))
-	sb.WriteString(fmt.Sprintf("| RPS (Requests/sec) | %.2f\n", rf.Metrics.RPS))
-	sb.WriteString(fmt.Sprintf("| Average Resp. Size | %db\n", int(math.Round(rf.Metrics.AverageRespSize))))
-	sb.WriteString(fmt.Sprintf("| 95th Percentile | %db\n", rf.Metrics.Percentile95))
-	sb.WriteString("|===\n\n")
-
-	// Resources section.
-	sb.WriteString("== Requested Resources\n\n")
-	sb.WriteString("[cols=\"2,1\", options=\"header\"]\n|===\n")
-	sb.WriteString("| Resource | Count\n")
-	sortedResources := sortMapByValue(rf.Metrics.Resources)
-	for _, pair := range sortedResources {
-		sb.WriteString(fmt.Sprintf("| `%s` | %d\n", pair.Key, pair.Value))
-	}
-	sb.WriteString("|===\n\n")
-
-	// Status codes section.
-	sb.WriteString("== Response Codes\n\n")
-	sb.WriteString("[cols=\"2,1\", options=\"header\"]\n|===\n")
-	sb.WriteString("| Code | Count\n")
-	sortedStatusCodes := sortIntMapByValue(rf.Metrics.StatusCodes)
-	for _, pair := range sortedStatusCodes {
-		sb.WriteString(fmt.Sprintf("| %d | %d\n", pair.Key, pair.Value))
-	}
-	sb.WriteString("|===\n\n")
-
-	return sb.String()
-}
-
-// RenderConsole generates a plain text representation of the report for console output.
-func (rf *ReportFormatter) RenderConsole() string {
-	var sb strings.Builder
-
-	// Report creation timestamp.
-	sb.WriteString(fmt.Sprintf("=== Log Analysis Report (Created: %s) ===\n\n", time.Now().Format("02.01.2006 15:04:05")))
-
-	// General information section.
-	sb.WriteString("General Information:\n")
-	sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", "Metric", "Value"))
-	sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", "-------------------------", "---------------"))
-	sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", "Files", rf.Metrics.FileNames[0])) // First file.
-	for _, file := range rf.Metrics.FileNames[1:] {
-		sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", "", file)) // Remaining files.
-	}
-	sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", "Start Date", rf.Metrics.StartDate.Format("02.01.2006")))
-	sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", "End Date", rf.Metrics.EndDate.Format("02.01.2006")))
-	sb.WriteString(fmt.Sprintf(" %-25s %-15d\n", "Total Requests", rf.Metrics.TotalRequests))
-	sb.WriteString(fmt.Sprintf(" %-25s %-15d\n", "Unique IPs", len(rf.Metrics.UniqueIPs)))
-	sb.WriteString(fmt.Sprintf(" %-25s %-15.2f\n", "RPS (Requests/sec)", rf.Metrics.RPS))
-	sb.WriteString(fmt.Sprintf(" %-25s %-15d\n", "Average Resp. Size", int(math.Round(rf.Metrics.AverageRespSize))))
-	sb.WriteString(fmt.Sprintf(" %-25s %-15d\n", "95th Percentile Size", rf.Metrics.Percentile95))
-
-	// Resources section.
-	sb.WriteString("\nRequested Resources:\n")
-	sb.WriteString(fmt.Sprintf(" %-40s %-10s\n", "Resource", "Count"))
-	sb.WriteString(fmt.Sprintf(" %-40s %-10s\n", "----------------------------------------", "----------"))
-	sortedResources := sortMapByValue(rf.Metrics.Resources)
+	resourcesTable := [][]string{{"Resource", "Count"}}
 	for _, res := range sortedResources {
-		sb.WriteString(fmt.Sprintf(" %-40s %-10d\n", res.Key, res.Value))
+		resourcesTable = append(resourcesTable, []string{res.Key, fmt.Sprintf("%d", res.Value)})
 	}
+	addTable(&sb, format, "Requested Resources", resourcesTable)
 
-	// Status codes section.
-	sb.WriteString("\nResponse Codes:\n")
-	sb.WriteString(fmt.Sprintf(" %-10s %-10s\n", "Code", "Count"))
-	sb.WriteString(fmt.Sprintf(" %-10s %-10s\n", "----------", "----------"))
+	// Add status codes section.
 	sortedStatusCodes := sortIntMapByValue(rf.Metrics.StatusCodes)
+	statusTable := [][]string{{"Code", "Count"}}
 	for _, code := range sortedStatusCodes {
-		sb.WriteString(fmt.Sprintf(" %-10d %-10d\n", code.Key, code.Value))
+		statusTable = append(statusTable, []string{fmt.Sprintf("%d", code.Key), fmt.Sprintf("%d", code.Value)})
 	}
+	addTable(&sb, format, "Response Codes", statusTable)
 
 	return sb.String()
+}
+
+// addHeader adds a section header to the report in the specified format.
+func addHeader(sb *strings.Builder, format, header string) {
+	switch format {
+	case "markdown":
+		sb.WriteString(fmt.Sprintf("#### %s\n\n", header))
+	case "adoc":
+		sb.WriteString(fmt.Sprintf("= %s\n\n", header))
+	default: // plain text
+		sb.WriteString(fmt.Sprintf("=== %s ===\n\n", header))
+	}
+}
+
+// addTable adds a table to the report in the specified format.
+func addTable(sb *strings.Builder, format, title string, rows [][]string) {
+	switch format {
+	case "markdown":
+		sb.WriteString(fmt.Sprintf("#### %s\n\n", title))
+		for i, row := range rows {
+			if i == 0 {
+				sb.WriteString("| " + strings.Join(row, " | ") + " |\n")
+				sb.WriteString("|" + strings.Repeat(":---|", len(row)) + "\n")
+			} else {
+				sb.WriteString("| " + strings.Join(row, " | ") + " |\n")
+			}
+		}
+		sb.WriteString("\n")
+	case "adoc":
+		sb.WriteString(fmt.Sprintf("== %s\n\n", title))
+		sb.WriteString("[cols=\"2,1\", options=\"header\"]\n|===\n")
+		for _, row := range rows {
+			sb.WriteString("| " + strings.Join(row, " | ") + "\n")
+		}
+		sb.WriteString("|===\n\n")
+	default: // plain text
+		sb.WriteString(fmt.Sprintf("%s:\n", title))
+		for _, row := range rows {
+			sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", row[0], row[1]))
+		}
+		sb.WriteString("\n")
+	}
 }
