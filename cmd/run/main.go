@@ -78,7 +78,13 @@ func runAnalyzer() {
 		log.Fatalf("Error parsing time bounds: %v", err)
 	}
 
-	paths, _ := parseFiles(globPattern)
+	paths, err := parseFiles(globPattern)
+	if err != nil {
+		log.Fatalf("Error parsing files: %v", err)
+	}
+	if len(paths) == 0 {
+		log.Fatalf("No files found matching the pattern: %s", globPattern)
+	}
 
 	analyzer := application.NewLogAnalyzer(paths)
 	err = analyzer.AnalyzeLogs(fromTime, toTime)
@@ -88,11 +94,18 @@ func runAnalyzer() {
 
 	metrics := analyzer.Metrics
 	formatter := infrastructure.ReportFormatter{Metrics: metrics}
+	output := infrastructure.ReportOutput{}
 
-	// Generate the report in the specified format
+	// Если формат не указан, выводим в консоль
+	if format == "" {
+		output.OutputToConsole(formatter.RenderConsole())
+		return
+	}
+
+	// Генерация отчета в указанном формате
 	var report string
 	outputFile := "log_report.md"
-	if format == "markdown" || format == "" {
+	if format == "markdown" {
 		report = formatter.RenderMarkdown()
 	} else if format == "adoc" {
 		report = formatter.RenderAdoc()
@@ -101,7 +114,6 @@ func runAnalyzer() {
 		log.Fatalf("Unsupported format: %s", format)
 	}
 
-	output := infrastructure.ReportOutput{}
 	err = output.OutputToFile(report, outputFile)
 	if err != nil {
 		log.Fatalf("Error saving report: %v", err)
