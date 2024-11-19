@@ -59,17 +59,29 @@ func parseTimeWithFormats(input string, formats []string) (time.Time, error) {
 	return time.Time{}, fmt.Errorf("could not parse time: %s", input)
 }
 
-func parseFiles(globPattern string) ([]string, error) {
-	files, err := filepath.Glob(globPattern)
+func parseFiles(pattern string) ([]string, error) {
+	// Проверяем, является ли путь URL
+	if isURL(pattern) {
+		return []string{pattern}, nil
+	}
+
+	// Используем filepath.Glob для локальных файлов
+	files, err := filepath.Glob(pattern)
 	if err != nil {
 		return nil, fmt.Errorf("error finding files: %v", err)
 	}
+
 	// Проверяем, найдены ли файлы
 	if len(files) == 0 {
-		fmt.Println("Файлы не найдены в директории logs")
-		return []string{}, nil
+		return nil, fmt.Errorf("no files found matching the pattern: %s", pattern)
 	}
+
 	return files, nil
+}
+
+// isURL checks if a given path is a URL
+func isURL(path string) bool {
+	return len(path) > 4 && (path[:4] == "http" || path[:5] == "https")
 }
 
 func runAnalyzer() {
@@ -81,9 +93,6 @@ func runAnalyzer() {
 	paths, err := parseFiles(globPattern)
 	if err != nil {
 		log.Fatalf("Error parsing files: %v", err)
-	}
-	if len(paths) == 0 {
-		log.Fatalf("No files found matching the pattern: %s", globPattern)
 	}
 
 	analyzer := application.NewLogAnalyzer(paths)

@@ -14,6 +14,7 @@ type LogRecord struct {
 	UserAgent    string
 }
 
+// Metrics stores statistics from analyzed logs
 type Metrics struct {
 	FileNames       []string
 	StartDate       time.Time
@@ -25,16 +26,18 @@ type Metrics struct {
 	ResponseSizes   []int
 	Resources       map[string]int
 	StatusCodes     map[int]int
+	UniqueIPs       map[string]struct{} // To track unique IPs
+	RPS             float64             // Requests Per Second
 }
 
+// NewMetrics initializes a new Metrics instance
 func NewMetrics(fileNames []string) *Metrics {
 	return &Metrics{
 		FileNames:     fileNames,
-		StartDate:     time.Now(),
-		EndDate:       time.Time{},
-		ResponseSizes: make([]int, 0),
 		Resources:     make(map[string]int),
 		StatusCodes:   make(map[int]int),
+		ResponseSizes: make([]int, 0),
+		UniqueIPs:     make(map[string]struct{}),
 	}
 }
 

@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"github.com/abakunov/log-analyzer/internal/domain"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -27,27 +28,36 @@ func NewLogAnalyzer(paths []string) *LogAnalyzer {
 // AnalyzeLogs processes all log files or URLs based on the provided paths
 func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time) error {
 	for _, path := range a.Paths {
-		err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+		if isURL(path) {
+			fmt.Printf("Processing URL: %s\n", path)
+			err := a.processURL(path, from, to)
 			if err != nil {
-				return err
+				fmt.Printf("Error processing URL %s: %v\n", path, err)
 			}
-
-			// Проверяем, что это файл (а не директория)
-			if !info.IsDir() {
-				fmt.Printf("Processing file: %s\n", filePath)
-				err := a.processFile(filePath, from, to)
+		} else {
+			err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
 				if err != nil {
-					fmt.Printf("Error processing file %s: %v\n", filePath, err)
+					return err
 				}
-			}
-			return nil
-		})
 
-		if err != nil {
-			return fmt.Errorf("error walking the path %s: %w", path, err)
+				// Проверяем, что это файл (а не директория)
+				if !info.IsDir() {
+					fmt.Printf("Processing file: %s\n", filePath)
+					err := a.processFile(filePath, from, to)
+					if err != nil {
+						fmt.Printf("Error processing file %s: %v\n", filePath, err)
+					}
+				}
+				return nil
+			})
+
+			if err != nil {
+				return fmt.Errorf("error walking the path %s: %w", path, err)
+			}
 		}
 	}
 
+	a.calculateRPS()
 	return nil
 }
 
@@ -62,7 +72,23 @@ func (a *LogAnalyzer) processFile(filePath string, from, to time.Time) error {
 	return a.processLogs(file, from, to)
 }
 
-// processLogs processes logs from an io.Reader
+// processURL processes logs directly from a URL without loading into memory
+func (a *LogAnalyzer) processURL(url string, from, to time.Time) error {
+	resp, err := http.Get(url)
+	if err != nil {
+		return fmt.Errorf("failed to fetch file from URL %s: %w", url, err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("unexpected HTTP status for URL %s: %s", url, resp.Status)
+	}
+
+	// Process the logs directly from the response body
+	return a.processLogs(resp.Body, from, to)
+}
+
+// processLogs processes logs from an io.Reader line by line
 func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time) error {
 	scanner := bufio.NewScanner(reader)
 	lineCount := 0
@@ -87,8 +113,7 @@ func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time) error {
 		a.updateMetrics(logRecord)
 	}
 
-	fmt.Printf("Processed %d lines from log file\n", lineCount)
-	fmt.Print("\n")
+	fmt.Printf("Processed %d lines from log source\n", lineCount)
 	return scanner.Err()
 }
 
@@ -117,6 +142,18 @@ func (a *LogAnalyzer) updateMetrics(logRecord domain.LogRecord) {
 	metrics.Resources[logRecord.URL] += 1
 
 	metrics.StatusCodes[logRecord.StatusCode] += 1
+
+	// Add unique IP
+	metrics.UniqueIPs[logRecord.IP] = struct{}{}
+}
+
+// calculateRPS calculates Requests Per Second (RPS)
+func (a *LogAnalyzer) calculateRPS() {
+	metrics := a.Metrics
+	duration := metrics.EndDate.Sub(metrics.StartDate).Seconds()
+	if duration > 0 {
+		metrics.RPS = float64(metrics.TotalRequests) / duration
+	}
 }
 
 // CalculatePercentile counts the value of the specified percentile
@@ -130,4 +167,9 @@ func (a *LogAnalyzer) CalculatePercentile(values []int, percentile float64) int 
 		index = len(values) - 1
 	}
 	return values[index]
+}
+
+// isURL checks if a given path is a URL
+func isURL(path string) bool {
+	return len(path) > 4 && (path[:4] == "http" || path[:5] == "https")
 }

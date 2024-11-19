@@ -80,6 +80,8 @@ func (rf *ReportFormatter) RenderMarkdown() string {
 	sb.WriteString(fmt.Sprintf("| Начальная дата     | %s             |\n", rf.Metrics.StartDate.Format("02.01.2006")))
 	sb.WriteString(fmt.Sprintf("| Конечная дата      | %s             |\n", rf.Metrics.EndDate.Format("02.01.2006")))
 	sb.WriteString(fmt.Sprintf("| Количество запросов| %d             |\n", rf.Metrics.TotalRequests))
+	sb.WriteString(fmt.Sprintf("| Количество уникальных IP | %d      |\n", len(rf.Metrics.UniqueIPs)))
+	sb.WriteString(fmt.Sprintf("| RPS (Запросов/сек) | %.2f           |\n", rf.Metrics.RPS))
 	sb.WriteString(fmt.Sprintf("| Средний размер ответа | %db        |\n", int(math.Round(rf.Metrics.AverageRespSize))))
 	sb.WriteString(fmt.Sprintf("| 95p размера ответа | %db           |\n", rf.Metrics.Percentile95))
 
@@ -122,6 +124,8 @@ func (rf *ReportFormatter) RenderAdoc() string {
 	sb.WriteString(fmt.Sprintf("| Начальная дата | %s\n", rf.Metrics.StartDate.Format("02.01.2006")))
 	sb.WriteString(fmt.Sprintf("| Конечная дата | %s\n", rf.Metrics.EndDate.Format("02.01.2006")))
 	sb.WriteString(fmt.Sprintf("| Количество запросов | %d\n", rf.Metrics.TotalRequests))
+	sb.WriteString(fmt.Sprintf("| Количество уникальных IP | %d\n", len(rf.Metrics.UniqueIPs)))
+	sb.WriteString(fmt.Sprintf("| RPS (Запросов/сек) | %.2f\n", rf.Metrics.RPS))
 	sb.WriteString(fmt.Sprintf("| Средний размер ответа | %db\n", int(math.Round(rf.Metrics.AverageRespSize))))
 	sb.WriteString(fmt.Sprintf("| 95p размера ответа | %db\n", rf.Metrics.Percentile95))
 	sb.WriteString("|===\n\n")
@@ -167,6 +171,8 @@ func (rf *ReportFormatter) RenderConsole() string {
 	sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", "Start Date", rf.Metrics.StartDate.Format("02.01.2006")))
 	sb.WriteString(fmt.Sprintf(" %-25s %-15s\n", "End Date", rf.Metrics.EndDate.Format("02.01.2006")))
 	sb.WriteString(fmt.Sprintf(" %-25s %-15d\n", "Total Requests", rf.Metrics.TotalRequests))
+	sb.WriteString(fmt.Sprintf(" %-25s %-15d\n", "Unique IPs", len(rf.Metrics.UniqueIPs)))
+	sb.WriteString(fmt.Sprintf(" %-25s %-15.2f\n", "RPS (Requests/sec)", rf.Metrics.RPS))
 	sb.WriteString(fmt.Sprintf(" %-25s %-15d\n", "Average Response Size", int(math.Round(rf.Metrics.AverageRespSize))))
 	sb.WriteString(fmt.Sprintf(" %-25s %-15d\n", "95th Percentile Size", rf.Metrics.Percentile95))
 
