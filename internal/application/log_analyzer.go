@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"github.com/abakunov/log-analyzer/internal/domain"
 	"io"
-	"net/http"
 	"os"
 	"path/filepath"
 	"sort"
@@ -25,60 +24,35 @@ func NewLogAnalyzer(paths []string) *LogAnalyzer {
 	}
 }
 
-// CalculatePercentile counts the value of the specified percentile
-func (a *LogAnalyzer) CalculatePercentile(values []int, percentile float64) int {
-	if len(values) == 0 {
-		return 0
-	}
-	sort.Ints(values)
-	index := int(float64(len(values)) * percentile / 100)
-	if index >= len(values) {
-		index = len(values) - 1
-	}
-	return values[index]
-}
-
-// AnalyzeLogs analyzes logs from multiple sources (local files or URLs) in the specified time range
+// AnalyzeLogs processes all log files or URLs based on the provided paths
 func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time) error {
 	for _, path := range a.Paths {
-		if isURL(path) {
-			// Analyze from URL
-			if err := a.analyzeFromURL(path, from, to); err != nil {
+		err := filepath.Walk(path, func(filePath string, info os.FileInfo, err error) error {
+			if err != nil {
 				return err
 			}
-		} else {
-			// Analyze from local files with glob support
-			matches, err := filepath.Glob(path)
-			if err != nil {
-				return fmt.Errorf("invalid glob pattern %s: %w", path, err)
-			}
-			for _, file := range matches {
-				if err := a.analyzeFromFile(file, from, to); err != nil {
-					return err
+
+			// Проверяем, что это файл (а не директория)
+			if !info.IsDir() {
+				fmt.Printf("Processing file: %s\n", filePath)
+				err := a.processFile(filePath, from, to)
+				if err != nil {
+					fmt.Printf("Error processing file %s: %v\n", filePath, err)
 				}
 			}
+			return nil
+		})
+
+		if err != nil {
+			return fmt.Errorf("error walking the path %s: %w", path, err)
 		}
 	}
+
 	return nil
 }
 
-// analyzeFromURL processes logs from a URL
-func (a *LogAnalyzer) analyzeFromURL(url string, from, to time.Time) error {
-	resp, err := http.Get(url)
-	if err != nil {
-		return fmt.Errorf("failed to fetch logs from URL %s: %w", url, err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		return fmt.Errorf("error fetching logs from URL %s: %s", url, resp.Status)
-	}
-
-	return a.processLogs(resp.Body, from, to)
-}
-
-// analyzeFromFile processes logs from a local file
-func (a *LogAnalyzer) analyzeFromFile(filePath string, from, to time.Time) error {
+// processFile processes a single file
+func (a *LogAnalyzer) processFile(filePath string, from, to time.Time) error {
 	file, err := os.Open(filePath)
 	if err != nil {
 		return fmt.Errorf("failed to open file %s: %w", filePath, err)
@@ -91,9 +65,14 @@ func (a *LogAnalyzer) analyzeFromFile(filePath string, from, to time.Time) error
 // processLogs processes logs from an io.Reader
 func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time) error {
 	scanner := bufio.NewScanner(reader)
+	lineCount := 0
+
 	for scanner.Scan() {
-		logRecord, err := ParseLogLine(scanner.Text())
+		lineCount++
+		line := scanner.Text()
+		logRecord, err := ParseLogLine(line)
 		if err != nil {
+			fmt.Printf("Error parsing line: %s, Error: %v\n", line, err)
 			continue
 		}
 
@@ -108,6 +87,8 @@ func (a *LogAnalyzer) processLogs(reader io.Reader, from, to time.Time) error {
 		a.updateMetrics(logRecord)
 	}
 
+	fmt.Printf("Processed %d lines from log file\n", lineCount)
+	fmt.Print("\n")
 	return scanner.Err()
 }
 
@@ -117,10 +98,11 @@ func (a *LogAnalyzer) updateMetrics(logRecord domain.LogRecord) {
 
 	metrics.TotalRequests++
 
-	if metrics.StartDate.After(logRecord.Timestamp) {
+	// Update StartDate and EndDate
+	if metrics.StartDate.IsZero() || metrics.StartDate.After(logRecord.Timestamp) {
 		metrics.StartDate = logRecord.Timestamp
 	}
-	if metrics.EndDate.Before(logRecord.Timestamp) {
+	if metrics.EndDate.IsZero() || metrics.EndDate.Before(logRecord.Timestamp) {
 		metrics.EndDate = logRecord.Timestamp
 	}
 
@@ -132,12 +114,20 @@ func (a *LogAnalyzer) updateMetrics(logRecord domain.LogRecord) {
 
 	metrics.Percentile95 = a.CalculatePercentile(metrics.ResponseSizes, 95)
 
-	metrics.Resources[logRecord.URL]++
+	metrics.Resources[logRecord.URL] += 1
 
-	metrics.StatusCodes[logRecord.StatusCode]++
+	metrics.StatusCodes[logRecord.StatusCode] += 1
 }
 
-// isURL checks if a path is a URL
-func isURL(path string) bool {
-	return len(path) > 6 && (path[:7] == "http://" || path[:8] == "https://")
+// CalculatePercentile counts the value of the specified percentile
+func (a *LogAnalyzer) CalculatePercentile(values []int, percentile float64) int {
+	if len(values) == 0 {
+		return 0
+	}
+	sort.Ints(values)
+	index := int(float64(len(values)) * percentile / 100)
+	if index >= len(values) {
+		index = len(values) - 1
+	}
+	return values[index]
 }
