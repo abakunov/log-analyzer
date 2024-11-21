@@ -12,13 +12,13 @@ then
 fi
 
 # Build the application
-echo "Building the application..."
-go build -o $APP_NAME
+#!/bin/bash
 
-# Check if the build was successful
-if [ ! -f "$APP_NAME" ]; then
+echo "Building the application..."
+if go build -o analyzer cmd/run/main.go; then
+    echo "Build successful. The application is now installed as 'analyzer'."
+else
     echo "Build failed. Make sure your project compiles successfully."
-    exit 1
 fi
 
 # Move the executable to $INSTALL_DIR
