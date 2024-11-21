@@ -133,7 +133,6 @@ go build -o analyzer cmd/run/main.go
 │       ├── report_formatter.go # Форматирование отчётов
 │       ├── report_output.go # Вывод отчётов
 │       ├── *_test.go        # Тесты для инфраструктурных модулей
-└── logs                    # Примеры лог-файлов
 ```
 
 ### Тестирование
