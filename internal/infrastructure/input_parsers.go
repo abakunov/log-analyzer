@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"time"
+
+	"github.com/abakunov/log-analyzer/internal/application"
 )
 
 // ParseTimeBounds parses the 'from' and 'to' time bounds from strings into time.Time format.
@@ -50,7 +52,7 @@ func parseTimeWithFormats(input string, formats []string) (time.Time, error) {
 // ParseFiles parses the file path or URL pattern into a list of paths.
 func ParseFiles(pattern string) ([]string, error) {
 	// Check if the path is a URL.
-	if isURL(pattern) {
+	if application.IsURL(pattern) {
 		return []string{pattern}, nil
 	}
 
@@ -66,9 +68,4 @@ func ParseFiles(pattern string) ([]string, error) {
 	}
 
 	return files, nil
-}
-
-// isURL checks if a given path is a URL.
-func isURL(path string) bool {
-	return len(path) > 4 && (path[:4] == "http" || path[:5] == "https")
 }

@@ -22,19 +22,19 @@ func ParseLogLine(line string) (domain.LogRecord, error) {
 
 	log.IP = matches[1]
 
-	// Parse timestamp.
+	// Parse timestamp and ensure it's in UTC.
 	timestamp, err := time.Parse("02/Jan/2006:15:04:05 -0700", matches[2])
 	if err != nil {
 		return log, fmt.Errorf("failed to parse time: %v", err)
 	}
 
-	log.Timestamp = timestamp
+	log.Timestamp = timestamp.UTC()
 
 	log.Method = matches[3]
 	log.URL = matches[4]
 	log.Protocol = matches[5]
 
-	// Status code.
+	// Parse status code.
 	statusCode, err := strconv.Atoi(matches[6])
 	if err != nil {
 		return log, fmt.Errorf("failed to parse status code: %v", err)
@@ -42,7 +42,7 @@ func ParseLogLine(line string) (domain.LogRecord, error) {
 
 	log.StatusCode = statusCode
 
-	// Size of response.
+	// Parse response size.
 	if matches[7] != "-" {
 		responseSize, err := strconv.Atoi(matches[7])
 		if err != nil {

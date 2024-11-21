@@ -38,7 +38,7 @@ func (a *LogAnalyzer) AnalyzeLogs(from, to time.Time, filterField, filterValue s
 
 // processPath determines whether the path is a URL or local file and processes it.
 func (a *LogAnalyzer) processPath(path string, from, to time.Time, filterField, filterValue string) error {
-	if isURL(path) {
+	if IsURL(path) {
 		return a.processURLPath(path, from, to, filterField, filterValue)
 	}
 
