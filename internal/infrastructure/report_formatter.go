@@ -121,19 +121,32 @@ func addHeader(sb *strings.Builder, format, header string) {
 func addTable(sb *strings.Builder, format, title string, rows [][]string) {
 	switch format {
 	case "markdown":
+		// Add title
 		fmt.Fprintf(sb, "#### %s\n\n", title)
 
-		for i, row := range rows {
-			if i == 0 {
-				fmt.Fprintf(sb, "| %s |\n", strings.Join(row, " | "))
-				fmt.Fprintf(sb, "|%s|\n", strings.Repeat(":---|", len(row)))
-			} else {
+		// Generate Markdown table
+		if len(rows) > 0 {
+			// Header row
+			fmt.Fprintf(sb, "| %s |\n", strings.Join(rows[0], " | "))
+			// Separator row
+			separator := make([]string, len(rows[0]))
+			for i := range separator {
+				separator[i] = "---"
+			}
+
+			fmt.Fprintf(sb, "| %s |\n", strings.Join(separator, " | "))
+			// Data rows
+			for _, row := range rows[1:] {
 				fmt.Fprintf(sb, "| %s |\n", strings.Join(row, " | "))
 			}
 		}
 
+		fmt.Fprintln(sb)
+
 	case "adoc":
+		// AsciiDoc formatting
 		fmt.Fprintf(sb, "== %s\n\n", title)
+
 		fmt.Fprintf(sb, "[cols=\"2,1\", options=\"header\"]\n|===\n")
 
 		for _, row := range rows {
@@ -141,13 +154,15 @@ func addTable(sb *strings.Builder, format, title string, rows [][]string) {
 		}
 
 		fmt.Fprint(sb, "|===\n")
+
 	default: // plain text
+		// Plain text formatting
 		fmt.Fprintf(sb, "%s:\n", title)
 
 		for _, row := range rows {
 			fmt.Fprintf(sb, " %-25s %-15s\n", row[0], row[1])
 		}
-	}
 
-	fmt.Fprintln(sb)
+		fmt.Fprintln(sb)
+	}
 }
